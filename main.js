@@ -54,11 +54,24 @@ function draw() {
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0,0, gl.RGBA, gl.UNSIGNED_BYTE, video);
     }
 
-    let matrOrth = m4.orthographic(0,1,0,1, 8,20);
     gl.uniform1i(shProgram.bUseTexture, 1 );
     
-    // TODO: Place your code here to draw webCam surface
+    // We use Orthographic projection to draw the WebCam background
+    let matrOrth = m4.orthographic(0, 1, 0, 1, -1, 1);
+    gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrOrth);
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, m4.identity());
 
+    // Render in full color (no red/cyan filter) for zero parallax
+    gl.colorMask(true, true, true, true);
+    gl.uniform1i(shProgram.bUseTexture, 1);
+    
+    if (iTextureWebCam) {
+        surfaceWebCam.idTextureDiffuse = iTextureWebCam;
+        surfaceWebCam.Draw();
+    }
+
+    // Clear the depth buffer so the 3D model renders properly on top of the webcam feed
+    gl.clear(gl.DEPTH_BUFFER_BIT);
     
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
@@ -145,9 +158,27 @@ function initGL() {
     surface = new Model('Surface');
     surface.BufferData(data.verticesF32, data.indicesU16, data.texcoordsF32);
 
-    surfaceWebCam = new Model('SurfaceWebCam');
-    // TODO: Place your code here to load two triangle geomtery
-    // surfaceWebCam.BufferData(???);
+surfaceWebCam = new Model('SurfaceWebCam');
+    let webCamData = {
+        // A flat quad covering the screen coordinates (0 to 1)
+        verticesF32: new Float32Array([
+            0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            1.0, 1.0, 0.0
+        ]),
+        texcoordsF32: new Float32Array([
+            0.0, 1.0,
+            1.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0
+        ]),
+        indicesU16: new Uint16Array([
+            0, 1, 2, 
+            2, 1, 3
+        ])
+    };
+    surfaceWebCam.BufferData(webCamData.verticesF32, webCamData.indicesU16, webCamData.texcoordsF32);
 
     stereoCam = new StereoCamera(
         .7,     // decimeters
@@ -253,5 +284,21 @@ function init() {
 
     spaceball = new TrackballRotator(canvas, draw, 0);
 
+    draw();
+}
+// This function reads the HTML sliders and updates the stereo camera parameters
+window.updateParams = function() {
+    stereoCam.eyeSeparation = parseFloat(document.getElementById("eyeSep").value);
+    document.getElementById("eyeSepVal").innerText = stereoCam.eyeSeparation;
+
+    stereoCam.FOV = parseFloat(document.getElementById("fov").value);
+    document.getElementById("fovVal").innerText = stereoCam.FOV;
+
+    stereoCam.nearClippingDistance = parseFloat(document.getElementById("nearClip").value);
+    document.getElementById("nearClipVal").innerText = stereoCam.nearClippingDistance;
+
+    stereoCam.convergence = parseFloat(document.getElementById("convergence").value);
+    document.getElementById("convergenceVal").innerText = stereoCam.convergence;
+    
     draw();
 }
