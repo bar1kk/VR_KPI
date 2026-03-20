@@ -74,72 +74,73 @@ function Model(name) {
     }
 }
 
-function CreateSurfaceData(data)
-{
+function CreateSurfaceData(data) {
     let vertices = [];
     let triangles = [];
 
-    for (let i=0, ang = 0; i<72; i++, ang+=5) {
-        // TODO: replace with your equation
-        vertices.push( new Vertex( [Math.sin(deg2rad(ang)), 0, Math.cos(deg2rad(ang))], [ang/360, 0]  ));
-    }
+    // Arbitrary constants for the formula
+    const a = 5.0; 
+    const b = 2.0; 
+    
+    const zSteps = 40;
+    const betaSteps = 40;
 
-    for (let i=0, ang = 0; i<72; i++, ang+=5) {
+    // 1. Generate vertices based on the parametric equations
+    for (let i = 0; i <= zSteps; i++) {
+        // Map i to the range [0, a]
+        let z = (i / zSteps) * a; 
+        
+        // Calculate r(z) = z * sqrt(z * (a - z)) / b
+        // Use Math.max to prevent negative numbers inside sqrt due to float precision
+        let r = (z * Math.sqrt(Math.max(0, z * (a - z)))) / b;
 
-        // TODO: replace with your equation
-        let v0ind = vertices.length;
-        vertices.push( new Vertex( [Math.sin(deg2rad(ang)), 1, Math.cos(deg2rad(ang))], [ang/360, 1]  ));
+        for (let j = 0; j <= betaSteps; j++) {
+            let beta = (j / betaSteps) * 2 * Math.PI;
+            
+            // x(z, beta) and y(z, beta)
+            let x = r * Math.sin(beta);
+            let y = r * Math.cos(beta);
 
-        // v0    v2 
-        //   o - o
-        //   | \ |
-        //   o - o
-        // v3     v1
+            // Shift Z to center the model for better rotation
+            let zCentered = z - (a / 2.0);
 
-        if (i > 0)
-        {
-            let v1ind = v0ind - 72 -1;
-            let v2ind = v0ind - 1;
-            let v3ind = v0ind - 72;
+            // Texture coordinates
+            let u = j / betaSteps;
+            let v = i / zSteps;
 
-            let trian = new Triangle(v0ind, v1ind, v2ind);
-            let trianInd = triangles.length;
-
-            triangles.push( trian );
-            vertices[v0ind].triangles.push(trianInd);
-            vertices[v1ind].triangles.push(trianInd);
-            vertices[v2ind].triangles.push(trianInd);
-
-            let trian2 = new Triangle(v0ind, v3ind, v1ind);
-            let trianInd2 = triangles.length;
-
-            triangles.push( trian2 );
-            vertices[v0ind].triangles.push(trianInd2);
-            vertices[v3ind].triangles.push(trianInd2);
-            vertices[v1ind].triangles.push(trianInd2);
-
+            vertices.push(new Vertex([x, y, zCentered], [u, v]));
         }
-
     }
 
-    data.verticesF32  = new Float32Array(vertices.length*3);
-    data.texcoordsF32 = new Float32Array(vertices.length*2);
-    for (let i=0, len=vertices.length; i<len; i++)
-    {
-        data.verticesF32[i*3 + 0] = vertices[i].p[0];
-        data.verticesF32[i*3 + 1] = vertices[i].p[1];
-        data.verticesF32[i*3 + 2] = vertices[i].p[2];
+    // 2. Generate triangles to form the polygons
+    for (let i = 0; i < zSteps; i++) {
+        for (let j = 0; j < betaSteps; j++) {
+            let p0 = i * (betaSteps + 1) + j;
+            let p1 = p0 + 1;
+            let p2 = (i + 1) * (betaSteps + 1) + j;
+            let p3 = p2 + 1;
 
-        data.texcoordsF32[i*2 + 0] = vertices[i].t[0];
-        data.texcoordsF32[i*2 + 1] = vertices[i].t[1];
+            triangles.push(new Triangle(p0, p2, p1));
+            triangles.push(new Triangle(p1, p2, p3));
+        }
     }
 
-    data.indicesU16 = new Uint16Array(triangles.length*3);
-    for (let i=0, len=triangles.length; i<len; i++)
-    {
-        data.indicesU16[i*3 + 0] = triangles[i].v0;
-        data.indicesU16[i*3 + 1] = triangles[i].v1;
-        data.indicesU16[i*3 + 2] = triangles[i].v2;
+    // 3. Populate the data arrays
+    data.verticesF32 = new Float32Array(vertices.length * 3);
+    data.texcoordsF32 = new Float32Array(vertices.length * 2);
+    for (let i = 0; i < vertices.length; i++) {
+        data.verticesF32[i * 3 + 0] = vertices[i].p[0];
+        data.verticesF32[i * 3 + 1] = vertices[i].p[1];
+        data.verticesF32[i * 3 + 2] = vertices[i].p[2];
+
+        data.texcoordsF32[i * 2 + 0] = vertices[i].t[0];
+        data.texcoordsF32[i * 2 + 1] = vertices[i].t[1];
     }
 
+    data.indicesU16 = new Uint16Array(triangles.length * 3);
+    for (let i = 0; i < triangles.length; i++) {
+        data.indicesU16[i * 3 + 0] = triangles[i].v0;
+        data.indicesU16[i * 3 + 1] = triangles[i].v1;
+        data.indicesU16[i * 3 + 2] = triangles[i].v2;
+    }
 }
