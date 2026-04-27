@@ -73,7 +73,7 @@ function draw() {
     // Clear the depth buffer so the 3D model renders properly on top of the webcam feed
     gl.clear(gl.DEPTH_BUFFER_BIT);
     
-    /* Get the view matrix from the SimpleRotator object.*/
+/* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
     let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
@@ -301,4 +301,107 @@ window.updateParams = function() {
     document.getElementById("convergenceVal").innerText = stereoCam.convergence;
     
     draw();
+}
+
+// Sensor Server Logic
+
+let sensorRotationMatrix = m4.identity();
+let sensorSocket = null;
+let gyroTimestamp = 0;
+const NS2S = 1.0 / 1000000000.0;
+
+function setSensorStatus(msg, color) {
+    const el = document.getElementById('sensor-status');
+    if (el) {
+        el.textContent = msg;
+        if (color) el.style.color = color;
+    }
+}
+
+function processGyroscope(values, currentTimestamp) {
+    if (gyroTimestamp !== 0) {
+        let dT = (currentTimestamp - gyroTimestamp) * NS2S;
+        if (dT > 1000) dT = (currentTimestamp - gyroTimestamp) / 1000.0; 
+
+        let axisX = values[0];
+        let axisY = values[1];
+        let axisZ = values[2];
+
+        let omegaMagnitude = Math.sqrt(axisX * axisX + axisY * axisY + axisZ * axisZ);
+
+        if (omegaMagnitude > 0.00001) {
+            axisX /= omegaMagnitude;
+            axisY /= omegaMagnitude;
+            axisZ /= omegaMagnitude;
+        }
+
+        let thetaOverTwo = omegaMagnitude * dT / 2.0;
+        let sinThetaOverTwo = Math.sin(thetaOverTwo);
+        let cosThetaOverTwo = Math.cos(thetaOverTwo);
+
+        let rotationVector = [
+            sinThetaOverTwo * axisX,
+            sinThetaOverTwo * axisY,
+            sinThetaOverTwo * axisZ,
+            cosThetaOverTwo
+        ];
+
+        let deltaRotationMatrix = getRotationMatrixFromVector(rotationVector);
+        
+        sensorRotationMatrix = m4.multiply(sensorRotationMatrix, deltaRotationMatrix);
+    }
+    gyroTimestamp = currentTimestamp;
+}
+
+window.toggleConnection = function() {
+    let btn = document.getElementById("btnConnect");
+    let ip = document.getElementById("wsIp").value;
+
+    if (sensorSocket && sensorSocket.readyState === WebSocket.OPEN) {
+        sensorSocket.close();
+        return;
+    }
+
+    const url = `ws://${ip}/sensor/connect?type=android.sensor.gyroscope`;
+    
+    setSensorStatus('Connecting...', '#f39c12');
+    btn.innerText = "Connecting...";
+
+    try {
+        sensorSocket = new WebSocket(url);
+    } catch (e) {
+        setSensorStatus('Error: ' + e.message, '#e74c3c');
+        btn.innerText = "Connect to Phone";
+        return;
+    }
+
+    sensorSocket.onopen = function() {
+        setSensorStatus('Connected (Gyroscope active)', '#2ecc71');
+        btn.innerText = "Disconnect";
+        btn.style.background = "#e74c3c";
+        gyroTimestamp = 0; 
+        sensorRotationMatrix = m4.identity();
+    };
+
+    sensorSocket.onmessage = function(event) {
+        try {
+            let msg = JSON.parse(event.data);
+            if (msg.values && msg.values.length >= 3) {
+                processGyroscope(msg.values, msg.timestamp);
+            }
+        } catch (e) {
+            console.error("Data parsing error:", e);
+        }
+    };
+
+    sensorSocket.onerror = function() {
+        setSensorStatus('Connection error', '#e74c3c');
+    };
+
+    sensorSocket.onclose = function() {
+        setSensorStatus('Disconnected', '#e74c3c');
+        btn.innerText = "Connect to Phone";
+        btn.style.background = "linear-gradient(135deg, #2ecc71, #27ae60)";
+        sensorSocket = null;
+    };
 }

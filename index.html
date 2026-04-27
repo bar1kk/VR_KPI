@@ -2,7 +2,7 @@
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 
-<title>PA#1</title>
+<title>PA#2</title>
 
 <link rel="stylesheet" href="./style.css" />
 
@@ -12,6 +12,7 @@
 <script src="./Model.js"></script>
 <script src="./StereoCamera.js"></script>
 <script src="./Texture.js"></script>
+<script src="./SensorRotation.js"></script>
 <script src="./main.js"></script>
 
 </head>
@@ -32,6 +33,17 @@
 
                 <div class="controls">
                     <div class="parameters__container">
+                        <h3 style="border-bottom: 2px solid #2ecc71;">Sensor Connection</h3>
+                        <div class="parameter-group">
+                            <label for="wsIp">Server IP:</label>
+                            <input type="text" id="wsIp" value="Redmi-Note-8-Pro:8080" style="padding: 8px; width: 100%; box-sizing: border-box; margin-top: 5px; border: 2px solid #e1e8ed; border-radius: 6px;" />
+                        </div>
+                        <div class="parameter-group">
+                            <span id="sensor-status" style="color: #e74c3c; font-weight: bold;">Disconnected</span>
+                        </div>
+                        <div class="button" style="margin-top: 15px; margin-bottom: 25px;">
+                            <button id="btnConnect" onclick="toggleConnection()" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">Connect to Phone</button>
+                        </div>
                         <h3>Parameters</h3>
                         <div class="parameter-group">
                             <label for="eyeSep">Eye Separation: <span id="eyeSepVal">0.7</span></label>
