@@ -73,8 +73,10 @@ function draw() {
     // Clear the depth buffer so the 3D model renders properly on top of the webcam feed
     gl.clear(gl.DEPTH_BUFFER_BIT);
     
-/* Get the view matrix from the SimpleRotator object.*/
-    let modelView = spaceball.getViewMatrix();
+    /* Get the view matrix from the SimpleRotator object.*/
+    let trackballMatrix = spaceball.getViewMatrix();
+    // Об'єднуємо обертання мишкою з обертанням від телефона
+    let modelView = m4.multiply(trackballMatrix, sensorRotationMatrix);
 
     let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
     let translateToPointZero = m4.translation(0,0,-10);
