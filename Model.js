@@ -54,7 +54,7 @@ AFRAME.registerComponent('parametric-surface', {
         const wireframeMesh = new THREE.Mesh(geometry, wireframeMaterial);
         mesh.add(wireframeMesh);
 
-        mesh.scale.set(0.15, 0.15, 0.15);
+        mesh.scale.set(0, 0, 0);
         mesh.rotation.x = -Math.PI / 2;
 
         this.el.setObject3D('mesh', mesh);
